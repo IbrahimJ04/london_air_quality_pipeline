@@ -100,3 +100,33 @@ The total remained at 665 measurements, confirming that reloading the same recor
 ### Next steps
 
 The extraction currently uses fixed dates. The next priority is to make it incremental so that future runs retrieve additional data without losing existing history.
+
+
+## 28 October 2026 — Incremental Extraction
+
+### Implementation
+
+I updated the extraction script to identify the latest date already collected for each monitoring station using the saved JSON filenames.
+
+The script requests measurements for new completed days and saves them as separate JSON files, preserving the previous historical responses.
+
+If no new completed days are available, the script skips the API request.
+
+### Testing
+
+The updated script retrieved measurements for 26–27 October 2026:
+
+- BQ7: 48 hourly records.
+- BT6: 48 hourly records.
+
+When I ran the extraction script a second time, it recognised that the latest completed days had already been downloaded and therefore did not request the same data again.
+
+After loading the new files, the DuckDB database increased from 665 to 760 measurements.
+
+Running the loading script again left the total unchanged at 760, confirming that duplicate measurements were not added.
+
+### Remaining limitation
+
+The current extraction only requests dates that have not previously been collected. It does not revisit earlier dates to check whether missing or delayed measurements have become available.
+
+This will need to be considered before the final pipeline is complete.

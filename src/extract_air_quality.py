@@ -1,18 +1,33 @@
 import requests
 import json
 import os
+from datetime import datetime, timezone
 
-# Stations and historical date range
 site_codes = ["BQ7", "BT6"]
-start_date = "2026-10-12"
-end_date = "2026-10-26"
 
-# Create the folder for the original API responses
+# Use today's UTC date as the end of the collection period
+end_date = datetime.now(timezone.utc).date().isoformat()
+
 os.makedirs("data/raw", exist_ok=True)
 
 for site_code in site_codes:
 
-    # Request hourly NO2 measurements
+    # Find where the previous extraction finished
+    start_date = "2026-10-12"
+
+    for filename in os.listdir("data/raw"):
+        if filename.startswith(f"{site_code}_NO2_") and filename.endswith(".json"):
+            saved_end_date = filename.replace(".json", "").split("_")[-1]
+
+            if saved_end_date > start_date:
+                start_date = saved_end_date
+
+    # Skip stations that already have the latest completed day
+    if start_date >= end_date:
+        print(f"{site_code}: No new completed days to download")
+        continue
+
+    # Request the new hourly measurements
     url = (
         "https://api.erg.ic.ac.uk/AirQuality/Data/SiteSpecies/"
         f"SiteCode={site_code}/SpeciesCode=NO2/"
@@ -23,7 +38,7 @@ for site_code in site_codes:
     response.raise_for_status()
     data = response.json()
 
-    # Save the response as a JSON file
+    # Save the new data without replacing previous historical files
     filename = f"data/raw/{site_code}_NO2_{start_date}_{end_date}.json"
 
     with open(filename, "w", encoding="utf-8") as file:
