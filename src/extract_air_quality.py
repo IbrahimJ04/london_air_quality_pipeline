@@ -1,7 +1,7 @@
 import requests
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, timedelta
 
 site_codes = ["BQ7", "BT6"]
 
@@ -27,6 +27,12 @@ for site_code in site_codes:
         print(f"{site_code}: No new completed days to download")
         continue
 
+    # Recheck the previous three days for delayed measurements
+    start_date = max(
+        date.fromisoformat(start_date) - timedelta(days=3),
+        date(2026, 10, 12)
+    ).isoformat()
+
     # Request the new hourly measurements
     url = (
         "https://api.erg.ic.ac.uk/AirQuality/Data/SiteSpecies/"
@@ -38,8 +44,9 @@ for site_code in site_codes:
     response.raise_for_status()
     data = response.json()
 
-    # Save the new data without replacing previous historical files
-    filename = f"data/raw/{site_code}_NO2_{start_date}_{end_date}.json"
+    # Include the download time to preserve each API response
+    download_time = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+    filename = f"data/raw/{site_code}_NO2_{start_date}_{download_time}_{end_date}.json"
 
     with open(filename, "w", encoding="utf-8") as file:
         json.dump(data, file, indent=2)

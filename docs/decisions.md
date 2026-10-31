@@ -51,7 +51,7 @@ I identified an inconsistency in how the Species field is represented:
 
 ### Implications for the pipeline
 
-If monitoring-site and pollutant metadata are incorporated into the pipeline, the transformation will need to handle both structures consistently.
+If pollutant metadata from the MonitoringSiteSpecies endpoint is incorporated into the pipeline, the transformation will need to handle both structures consistently.
 
 A possible approach is to convert a single Species dictionary into a one-element list before processing the pollutant records.
 
@@ -64,7 +64,7 @@ I also observed that some stations have historical closing dates, so the site me
 
 ### Station selection
 
-I tested recent NO2 data availability for four monitoring stations:
+I tested recent NO₂ data availability for four monitoring stations:
 
 - BQ7 (Urban Background): 24/24 readings available.
 - BT6 (Roadside): 24/24 readings available.
@@ -75,9 +75,9 @@ I selected BQ7 and BT6 for the initial pipeline because both returned complete n
 
 ### Historical data
 
-I retrieved hourly NO2 data for both selected stations covering 12–25 October 2026.
+I retrieved hourly NO₂ data for both selected stations covering 12-25 October 2026.
 
-The original API responses were saved as JSON files in data/raw, preserving the source data for reproducibility.
+The original API responses were saved as JSON files in data/raw/, preserving the source data for reproducibility.
 
 The extraction returned 336 hourly records per station, giving 672 records in total.
 
@@ -102,7 +102,7 @@ The total remained at 665 measurements, confirming that reloading the same recor
 The extraction currently uses fixed dates. The next priority is to make it incremental so that future runs retrieve additional data without losing existing history.
 
 
-## 28 October 2026 — Incremental Extraction
+## 28 October 2026 - Incremental Extraction
 
 ### Implementation
 
@@ -114,7 +114,7 @@ If no new completed days are available, the script skips the API request.
 
 ### Testing
 
-The updated script retrieved measurements for 26–27 October 2026:
+The updated script retrieved measurements for 26-27 October 2026:
 
 - BQ7: 48 hourly records.
 - BT6: 48 hourly records.
@@ -130,3 +130,97 @@ Running the loading script again left the total unchanged at 760, confirming tha
 The current extraction only requests dates that have not previously been collected. It does not revisit earlier dates to check whether missing or delayed measurements have become available.
 
 This will need to be considered before the final pipeline is complete.
+
+
+## 29 October 2026 - Database reproducibility
+
+### Decision
+
+Keep the original API responses and monitoring-station metadata as saved JSON files, rather than relying on a pre-built DuckDB database.
+
+### Reason
+
+The database is a generated output. Keeping the raw data means the database can be recreated by anyone running the project, without needing a copy of my local database file.
+
+### Implementation
+- Save hourly measurements in `data/raw/`.
+- Save monitoring-station metadata in `data/raw/metadata/`.
+- Exclude generated DuckDB files from Git using `.gitignore`.
+- Rebuild the database using `src/load_air_quality.py`.
+
+### Testing
+
+I created backup copies of the original database, moved it out of the way and ran the loading script to create a new database from the saved JSON files.
+
+The rebuilt database contained:
+- 808 hourly measurements: 404 for BQ7 and 404 for BT6.
+- Two monitoring-station records.
+- The expected measurement period of 12-28 October 2026.
+
+All seven SQL analysis queries ran successfully against the rebuilt database.
+
+### Trade-off:
+
+Rebuilding from all saved JSON files involves reprocessing historical data. This is manageable for the current dataset, but a larger pipeline would benefit from more selective processing.
+
+
+## 29 October 2026 - Handling incremental updates and overlapping data
+
+### Decision
+
+Use a three-day lookback when new completed days become available, preserve each API response and update existing measurements without creating duplicates.
+
+### Reason
+
+Air quality measurements may be published late or revised after their initial collection. Downloading only completely new dates could miss changes to recent measurements.
+
+### Implementation
+- Check the end dates of previously saved JSON files for each monitoring station.
+- Skip extraction when no new completed days are available.
+- When new days are available, move the extraction start date back three days.
+- Include a UTC download timestamp in refreshed JSON filenames so previous responses are not overwritten.
+- Process older downloads before newer ones and retain the latest numerical value for overlapping measurements.
+- Use a composite primary key of `site_code`, `species_code` and `measurement_datetime_gmt` in DuckDB.
+- Use `INSERT OR REPLACE` to insert new measurements or update existing ones.
+
+### Testing
+- Repeated loading did not increase the number of unique measurements.
+- A controlled database test confirmed that an existing measurement could be updated without creating a duplicate.
+- Running the extraction script again on the same day correctly reported that there were no new completed days to download.
+
+### Trade-off
+
+The three-day lookback allows recent measurements to be rechecked for possible updates without repeatedly downloading the entire historical dataset. Corrections made further back in time would require a longer refresh period.
+
+
+## 29 October 2026 - Data quality and completeness
+
+### Decision
+
+Preserve the original measurements, exclude missing numerical values from the analysis and identify gaps in the available hourly data.
+
+### Reason
+
+Air quality monitoring data may contain missing or unusual values. These need to be identified rather than silently treated as valid measurements or replaced with estimated values.
+
+### Implementation
+- Preserve the original API responses as JSON files.
+- Exclude empty measurement values when loading numerical data into DuckDB.
+- Do not replace missing values with zero or estimated readings.
+- Use SQL to calculate the number of available and missing hourly measurements for each station and date.
+- Retain unusual numerical readings for investigation rather than automatically removing them.
+
+### Findings
+- The dataset covers 12-28 October 2026.
+- Across both stations, 816 hourly measurements were expected.
+- There were 808 available numerical measurements and eight missing measurements.
+- BQ7 had four missing measurements on 14 October.
+- BT6 had three missing measurements on 22 October and one on 26 October.
+- BQ7 also contained a negative NO₂ value of -0.9, which requires further investigation.
+
+### Trade-off
+
+Retaining unusual values avoids making unsupported assumptions about their validity. However, potentially erroneous measurements may affect summary statistics until they have been investigated.
+
+
+The current completeness calculation assumes 24 hourly measurements per station per GMT date. A day with no numerical measurements would not appear in the current daily completeness results.
