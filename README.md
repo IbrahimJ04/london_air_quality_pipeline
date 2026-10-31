@@ -129,8 +129,10 @@ The three-day lookback helps capture recent corrections, although older correcti
 
 ### 1. Clone the repository
 
+```powershell
 git clone https://github.com/IbrahimJ04/london_air_quality_pipeline.git
 cd london_air_quality_pipeline
+```
 
 ### 2. Create and activate a virtual environment
 
