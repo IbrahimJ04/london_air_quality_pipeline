@@ -39,6 +39,20 @@ The data comes from the London Air Quality Network (LAQN), using its public API.
 - API reference: https://api.erg.ic.ac.uk/AirQuality/help
 - API documentation: https://api.erg.ic.ac.uk/AirQuality/Information/Documentation/pdf
 
+### Measurement units
+
+Nitrogen dioxide (NO₂) concentrations are measured in micrograms per cubic metre (µg/m³). Measurement timestamps are in GMT.
+
+### Data source and attribution
+
+The air quality data was obtained from the Environmental Research Group at Imperial College London, using data from the London Air Quality Network (LAQN).
+
+This information is licensed under the Open Government Licence, version 2.
+
+- London Air Quality Network: https://www.londonair.org.uk/Londonair/API/
+- API reference: https://api.erg.ic.ac.uk/AirQuality/help
+- Open Government Licence v2: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/2/
+
 ### Data collected
 
 The initial dataset contains hourly nitrogen dioxide (NO₂) measurements from two monitoring stations:
@@ -46,11 +60,11 @@ The initial dataset contains hourly nitrogen dioxide (NO₂) measurements from t
 - BT6 - Brent, John Keble Primary School (Roadside)
 - BQ7 - Bexley, Belvedere West (Urban Background)
 
-The current dataset covers 12-28 October 2026, with timestamps recorded in GMT.
+The current dataset covers 12 October to 1 November 2026, with measurement timestamps recorded in GMT.
 
-Across the two stations, there are 816 expected hourly records, of which 808 contain numerical measurements.
+Across the two stations, there are 1008 expected hourly records, of which 1000 contain numerical values.
 
-Some measurements are missing. The original API responses are preserved so these can be investigated.
+Each station has 500 available measurements, with eight missing measurements across the dataset. The original API responses are preserved so these can be investigated.
 
 ### Data storage
 

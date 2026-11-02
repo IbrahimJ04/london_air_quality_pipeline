@@ -7,6 +7,8 @@ st.set_page_config(page_title="London Air Quality Dashboard", layout="wide")
 
 st.title("London Air Quality Dashboard")
 st.write("Exploring hourly nitrogen dioxide (NO₂) measurements across London monitoring stations.")
+st.caption("NO₂ concentrations are measured in µg/m³ (micrograms per cubic metre).")
+st.caption("Data source: London Air Quality Network (LAQN), Environmental Research Group, Imperial College London. Open Government Licence v2.")
 
 # Connect to DuckDB and retrieve monitoring-site information
 con = duckdb.connect("data/output/air_quality.duckdb", read_only=True)
